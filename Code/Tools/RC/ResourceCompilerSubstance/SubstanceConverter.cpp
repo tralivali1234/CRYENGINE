@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
 
@@ -197,14 +197,14 @@ public:
 	}
 
 	virtual void OnOutputAvailable(SubstanceAir::UInt runUid,const SubstanceAir::GraphInstance *graphInstance, 
-		SubstanceAir::OutputInstanceBase * outputInstance) override
+		SubstanceAir::OutputInstance* outputInstance) override
 	{
 		SubstanceAir::OutputInstance::Result result(outputInstance->grabResult());
 		if (result.get() != NULL)
 		{
 			SGeneratedOutputData* data = (SGeneratedOutputData*)(outputInstance->mUserData);
 			string commandline;
-			commandline.Format("/autooptimizefile=0 /preset=%s /reduce=0 /cryasset=source,%s", data->texturePreset, data->source);
+			commandline.Format("/autooptimizefile=0 /preset=%s /reduce=0 /cryasset=parent,%s", data->texturePreset, data->source);
 			// TODO for now dissabling directds as nested calls have issues.
 			//if (m_coverter->GetConfig()->GetAsBool("directdds", false, true))
 			//{
@@ -229,7 +229,7 @@ public:
 				}
 
 				// Force remove of the read only flag.
-				SetFileAttributes(finalPath, FILE_ATTRIBUTE_ARCHIVE);
+				FileUtil::MakeWritable(finalPath);
 				MoveFileEx(tempPath, finalPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
 				m_pRC->AddInputOutputFilePair(data->path, finalPath);
 			}

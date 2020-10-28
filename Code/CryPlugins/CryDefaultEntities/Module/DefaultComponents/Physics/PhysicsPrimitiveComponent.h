@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #pragma once
 
@@ -10,6 +10,7 @@
 #include <CrySchematyc/Env/IEnvRegistrar.h>
 
 #include "DefaultComponents/ComponentHelpers/PhysicsParameters.h"
+#include <CryPhysics/physinterface.h>
 
 namespace Cry
 {
@@ -21,21 +22,13 @@ class CPhysicsPrimitiveComponent
 	  , public IEntityComponentPreviewer
 #endif
 {
-	// IEntityComponent
-	virtual void Initialize() final
+	virtual Cry::Entity::EventFlags GetEventMask() const final
 	{
-		AddPrimitive();
-	}
-
-	virtual void   ProcessEvent(const SEntityEvent& event) final;
-
-	virtual uint64 GetEventMask() const final
-	{
-		uint64 bitFlags = ENTITY_EVENT_BIT(ENTITY_EVENT_COMPONENT_PROPERTY_CHANGED);
+		Cry::Entity::EventFlags bitFlags = ENTITY_EVENT_COMPONENT_PROPERTY_CHANGED;
 
 		if (!isneg(m_physics.m_mass) || m_physics.m_density > 0)
 		{
-			bitFlags |= ENTITY_EVENT_BIT(ENTITY_EVENT_PHYSICAL_TYPE_CHANGED);
+			bitFlags |= ENTITY_EVENT_PHYSICAL_TYPE_CHANGED;
 		}
 
 		return bitFlags;
@@ -138,6 +131,14 @@ class CPhysicsPrimitiveComponent
 public:
 	CPhysicsPrimitiveComponent() {}
 	virtual ~CPhysicsPrimitiveComponent() = default;
+
+	// IEntityComponent
+	virtual void Initialize() override
+	{
+		AddPrimitive();
+	}
+
+	virtual void ProcessEvent(const SEntityEvent& event) override;
 
 	virtual std::unique_ptr<pe_geomparams> GetGeomParams() const { return stl::make_unique<pe_geomparams>(); }
 	virtual IGeometry*                     CreateGeometry() const = 0;

@@ -1,10 +1,11 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #pragma once
 
 #include "StdAfx.h"
 #include "PhysicsPrimitiveComponent.h"
 #include <CrySerialization/Enum.h>
+#include <Cry3DEngine/ISurfaceType.h>
 
 namespace Cry
 {
@@ -78,6 +79,11 @@ namespace Cry
 					if (ISurfaceType* pSurfaceType = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceTypeByName(surfaceType))
 					{
 						pGeomParams->surface_idx = pSurfaceType->GetId();
+						if (pSurfaceType->GetPhyscalParams().collType >= 0)
+						{
+							pGeomParams->flags &= ~(geom_collides | geom_floats);
+							pGeomParams->flags |= pSurfaceType->GetPhyscalParams().collType;
+						}
 					}
 					else
 					{
@@ -85,10 +91,9 @@ namespace Cry
 					}
 				}
 
-				Matrix34 slotTransform = m_pTransform->ToMatrix34();
-				pGeomParams->pos = slotTransform.GetTranslation();
-				pGeomParams->q = Quat(slotTransform);
-				pGeomParams->scale = slotTransform.GetUniformScale();
+				pGeomParams->pos = GetTransform()->GetTranslation();
+				pGeomParams->q = GetTransform()->GetRotation().ToQuat();
+				pGeomParams->scale = GetTransform()->GetScale().x;
 
 				if (!m_bReactToCollisions)
 				{

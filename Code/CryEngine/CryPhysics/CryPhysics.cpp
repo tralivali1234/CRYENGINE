@@ -1,7 +1,7 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
-//#include <float.h>
+#undef AddObject
 #include <CryPhysics/IPhysics.h>
 #include "geoman.h"
 #include "bvtree.h"
@@ -17,6 +17,7 @@
 #include <CryCore/Platform/platform_impl.inl>
 
 #ifndef STANDALONE_PHYSICS
+#include "cvars.h"
 #include <CrySystem/IEngineModule.h>
 #include <CryExtension/ICryFactory.h>
 #include <CryExtension/ClassWeaver.h>
@@ -113,6 +114,7 @@ public:
 		g_szAction[pe_action_move_parts::type_id] = sizeof(pe_action_move_parts);
 		g_szAction[pe_action_batch_parts_update::type_id] = sizeof(pe_action_batch_parts_update);
 		g_szAction[pe_action_slice::type_id] = sizeof(pe_action_slice);
+		g_szAction[pe_action_resolve_constraints::type_id] = sizeof(pe_action_resolve_constraints);
 
 		g_szGeomParams[pe_geomparams::type_id] = sizeof(pe_geomparams);
 		g_szGeomParams[pe_articgeomparams::type_id] = sizeof(pe_articgeomparams);
@@ -134,7 +136,7 @@ public:
 		g_subrefBuf[4].set((int)((INT_PTR)&ppt.pMatMapping-(INT_PTR)&ppt), 0,(int)((INT_PTR)&ppt.nMats-(INT_PTR)&ppt), sizeof(int), 0);
 
 		pe_params_sensors ps;
-		g_subrefParams[pe_params_sensors::type_id] = g_subrefBuf+4;
+		g_subrefParams[pe_params_sensors::type_id] = g_subrefBuf+5;
 		g_subrefBuf[5].set((int)((INT_PTR)&ps.pOrigins-(INT_PTR)&ps), 0,(int)((INT_PTR)&ps.nSensors-(INT_PTR)&ps), sizeof(Vec3), g_subrefBuf+6);
 		g_subrefBuf[6].set((int)((INT_PTR)&ps.pDirections-(INT_PTR)&ps), 0,(int)((INT_PTR)&ps.nSensors-(INT_PTR)&ps), sizeof(Vec3), 0);
 
@@ -182,13 +184,15 @@ public:
 InitPhysicsGlobals Now;
 
 
+thread_local int tls_isMainThread = 0;
 CRYPHYSICS_API IPhysicalWorld *CreatePhysicalWorld(ISystem *pSystem)
 {
+	MEMSTAT_CONTEXT(EMemStatContextType::Physics, "Create Physical World");
 	g_bHasSSE = pSystem && (pSystem->GetCPUFlags() & CPUF_SSE)!=0;
 
-	if (pSystem)
-	{
+	if (pSystem) {
 		pSystem->GetISystemEventDispatcher()->RegisterListener( &g_system_event_listener_physics, "CSystemEventListener_Physics");
+		tls_isMainThread = 1;
 		return new CPhysicalWorld(pSystem->GetILog());
 	}
 
@@ -209,9 +213,7 @@ class CEngineModule_CryPhysics : public IPhysicsEngineModule
 	virtual ~CEngineModule_CryPhysics()
 	{
 		if (ISystem* pSystem = GetISystem())
-		{
 			pSystem->GetISystemEventDispatcher()->RemoveListener(&g_system_event_listener_physics);
-		}
 		SAFE_RELEASE(gEnv->pPhysicalWorld);
 	}
 
@@ -227,11 +229,12 @@ class CEngineModule_CryPhysics : public IPhysicsEngineModule
 		g_bHasSSE = pSystem && (pSystem->GetCPUFlags() & CPUF_SSE)!=0;
 
 		if (pSystem)
-		{
 			pSystem->GetISystemEventDispatcher()->RegisterListener(&g_system_event_listener_physics,"CEngineModule_CryPhysics");
-		}
 
+		tls_isMainThread = 1;
 		env.pPhysicalWorld = new CPhysicalWorld(pSystem ? pSystem->GetILog():0);
+
+		PhysicsCVars::Register(env.pPhysicalWorld->GetPhysVars());
 
 		return true;
 	}

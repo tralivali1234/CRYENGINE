@@ -41,7 +41,7 @@ namespace Cry
 			virtual void Initialize() final;
 
 			virtual void ProcessEvent(const SEntityEvent& event) final;
-			virtual uint64 GetEventMask() const final;
+			virtual Cry::Entity::EventFlags GetEventMask() const final;
 
 #ifndef RELEASE
 			virtual IEntityComponentPreviewer* GetPreviewer() final { return this; }
@@ -61,6 +61,8 @@ namespace Cry
 			virtual void ApplySingleThrust(float thrust);
 			
 		protected:
+			void RequestPoststep();
+
 			bool m_bEnableConstantThrustByDefault = true;
 			float m_constantThrust = 1;
 

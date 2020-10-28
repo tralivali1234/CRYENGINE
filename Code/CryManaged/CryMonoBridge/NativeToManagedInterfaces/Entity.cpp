@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
 #include "Entity.h"
@@ -227,7 +227,7 @@ static MonoInternals::MonoObject* GetOrCreateComponent(IEntity* pEntity, uint64 
 	CManagedEntityComponent* pComponent = static_cast<CManagedEntityComponent*>(pEntity->GetComponentByTypeId(id));
 	if (pComponent == nullptr)
 	{
-		pComponent = static_cast<CManagedEntityComponent*>(pEntity->CreateComponentByInterfaceID(id, false));
+		pComponent = static_cast<CManagedEntityComponent*>(pEntity->CreateComponentByInterfaceID(id));
 	}
 
 	return pComponent->GetObject()->GetManagedObject();
@@ -323,6 +323,11 @@ static void SendComponentSignal(IEntity* pEntity, uint64 guidHipart, uint64 guid
 	}
 }
 
+static void SetManagedTimer(IEntityComponent* pTimer, uint8 id, int time)
+{
+	pTimer->SetTimer(id, time);
+}
+
 void CManagedEntityInterface::RegisterFunctions(std::function<void(const void* pMethod, const char* methodName)> func)
 {
 	func(RegisterComponent, "RegisterComponent");
@@ -337,4 +342,5 @@ void CManagedEntityInterface::RegisterFunctions(std::function<void(const void* p
 	func(RegisterComponentSignal, "RegisterComponentSignal");
 	func(AddComponentSignalParameter, "AddComponentSignalParameter");
 	func(SendComponentSignal, "SendComponentSignal");
+	func(SetManagedTimer, "SetTimer");
 }

@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
 #include "FactionComponent.h"
@@ -47,7 +47,7 @@ void CEntityAIFactionComponent::Register(Schematyc::IEnvRegistrar& registrar)
 			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CEntityAIFactionComponent::SetFactionIdSchematyc, "504e4eee-1633-4e17-92e8-0967edb4a3ae"_cry_guid, "SetFaction");
 			pFunction->SetDescription("Sets new faction for entity");
 			pFunction->SetFlags(Schematyc::EEnvFunctionFlags::Construction);
-			pFunction->BindInput(1, 'fid', "FactionId", "New faction", Vec3(ZERO));
+			pFunction->BindInput(1, 'fid', "FactionId", "New faction", SFactionID());
 			componentScope.Register(pFunction);
 		}
 		{
@@ -96,7 +96,11 @@ uint8 CEntityAIFactionComponent::GetFactionId() const
 
 void CEntityAIFactionComponent::SetFactionId(const uint8 factionId)
 {
-	m_factionId.id = factionId;
+	if (factionId != m_factionId.id)
+	{
+		m_factionId.id = factionId;
+		RegisterFactionId(m_factionId);
+	}
 }
 
 IFactionMap::ReactionType CEntityAIFactionComponent::GetReaction(const EntityId otherEntityId) const
@@ -121,7 +125,7 @@ void CEntityAIFactionComponent::SetFactionIdSchematyc(const SFactionID& factionI
 	if (factionId.id != m_factionId.id)
 	{
 		m_factionId = factionId;
-		RegisterFactionId(factionId);
+		RegisterFactionId(m_factionId);
 	}
 }
 

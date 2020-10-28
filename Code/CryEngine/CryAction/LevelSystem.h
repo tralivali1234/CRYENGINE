@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #ifndef __LEVELSYSTEM_H__
 #define __LEVELSYSTEM_H__
@@ -17,10 +17,13 @@
 	#define Log_LevelRotation(...)
 #endif
 
+class CLevelLoadTimeslicer;
+
 class CLevelInfo :
 	public ILevelInfo
 {
 	friend class CLevelSystem;
+	friend class CLevelLoadTimeslicer;
 public:
 	CLevelInfo() : m_heightmapSize(0), m_bMetaDataRead(false), m_isModLevel(false), m_scanTag(ILevelSystem::TAG_UNKNOWN), m_levelTag(ILevelSystem::TAG_UNKNOWN)
 	{
@@ -45,9 +48,9 @@ public:
 	virtual const bool                       MetadataLoaded() const override          { return m_bMetaDataRead; }
 
 	virtual int                              GetGameTypeCount() const override        { return m_gameTypes.size(); };
-	virtual const ILevelInfo::TGameTypeInfo* GetGameType(int gameType) const override { return &m_gameTypes[gameType]; };
+	virtual const ILevelInfo::SGameTypeInfo* GetGameType(int gameType) const override { return &m_gameTypes[gameType]; };
 	virtual bool                             SupportsGameType(const char* gameTypeName) const override;
-	virtual const ILevelInfo::TGameTypeInfo* GetDefaultGameType() const override;
+	virtual const ILevelInfo::SGameTypeInfo* GetDefaultGameType() const override;
 	virtual bool                             HasGameRules() const override            { return !m_gamerules.empty(); }
 
 	virtual const ILevelInfo::SMinimapInfo&  GetMinimapInfo() const override          { return m_minimapInfo; }
@@ -84,7 +87,7 @@ private:
 	uint32                                 m_scanTag;
 	uint32                                 m_levelTag;
 	bool                                   m_bMetaDataRead;
-	std::vector<ILevelInfo::TGameTypeInfo> m_gameTypes;
+	std::vector<ILevelInfo::SGameTypeInfo> m_gameTypes;
 	bool                                   m_isModLevel;
 	SMinimapInfo                           m_minimapInfo;
 	typedef std::map<string, TFlowInputData, stl::less_stricmp<string>> TAttributeList;
@@ -198,6 +201,7 @@ class CLevelSystem :
 	public ILevelSystem,
 	public ISystem::ILoadingProgressListener
 {
+	friend class CLevelLoadTimeslicer;
 public:
 	CLevelSystem(ISystem* pSystem);
 	virtual ~CLevelSystem();
@@ -217,6 +221,8 @@ public:
 
 	virtual ILevelInfo*       GetCurrentLevel() const { return m_pCurrentLevelInfo; }
 	virtual ILevelInfo*       LoadLevel(const char* levelName);
+	virtual bool              StartLoadLevel(const char* szLevelName);
+	virtual ELevelLoadStatus  UpdateLoadLevelStatus();
 	virtual void              UnLoadLevel();
 	virtual ILevelInfo*       SetEditorLoadedLevel(const char* levelName, bool bReadLevelInfoMetaData = false);
 	virtual void              PrepareNextLevel(const char* levelName);
@@ -245,7 +251,7 @@ private:
 
 	// ILevelSystemListener events notification
 	void OnLevelNotFound(const char* levelName);
-	void OnLoadingStart(ILevelInfo* pLevel);
+	bool OnLoadingStart(ILevelInfo* pLevel);
 	void OnLoadingLevelEntitiesStart(ILevelInfo* pLevelInfo);
 	void OnLoadingComplete(ILevelInfo* pLevel);
 	void OnLoadingError(ILevelInfo* pLevel, const char* error);
@@ -287,9 +293,11 @@ private:
 
 	static int                         s_loadCount;
 
-	std::vector<ILevelSystemListener*> m_listeners;
+	std::set<ILevelSystemListener*>    m_listeners;
 
 	DynArray<string>                   m_levelTypeList;
+
+	std::unique_ptr<CLevelLoadTimeslicer> m_pLevelLoadTimeslicer;
 };
 
 #endif //__LEVELSYSTEM_H__

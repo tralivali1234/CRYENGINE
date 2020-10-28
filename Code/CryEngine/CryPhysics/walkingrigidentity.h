@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #ifndef walkingrigidentity_h
 #define walkingrigidentity_h
@@ -16,6 +16,7 @@ public:
 	virtual void RemoveGeometry(int id, int bThreadSafe=1);
 	virtual int SetParams(pe_params *_params,int bThreadSafe=1);
 	virtual int GetParams(pe_params *_params) const;
+	virtual int Action(pe_action*,int bThreadSafe=1);
 	virtual int GetStatus(pe_status*) const;
 
 	virtual void RecomputeMassDistribution(int ipart=-1,int bMassChanged=1);
@@ -24,6 +25,7 @@ public:
 	virtual int GetPotentialColliders(CPhysicalEntity **&pentlist, float dt=0);
 	virtual bool OnSweepHit(geom_contact &cnt, int icnt, float &dt, Vec3 &vel, int &nsweeps);
 	virtual void CheckAdditionalGeometry(float dt);
+	virtual void ComputeBBox(Vec3 *BBox, int flags=update_part_bboxes);
 	virtual int RegisterContacts(float dt,int nMaxPlaneContacts);
 	virtual void GetMemoryStatistics(ICrySizer *pSizer) const;
 
@@ -41,6 +43,7 @@ public:
 	int m_ipartGround;
 	Vec3 m_ptlocGround, m_nlocGround;
 	int m_matidGround;
+	Vec3 m_lastVelCorr = Vec3(ZERO);
 
 	int m_nCollEnts = -1;
 	CPhysicalEntity **m_pCollEnts;

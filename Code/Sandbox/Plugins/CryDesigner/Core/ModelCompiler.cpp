@@ -1,15 +1,15 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
 #include "ModelCompiler.h"
-#include "Model.h"
-#include <Preferences/ViewportPreferences.h>
-#include "Objects/DesignerObject.h"
-#include "Tools/BaseTool.h"
+
 #include "Core/SmoothingGroupManager.h"
-#include "Subdivision.h"
-#include "Material/Material.h"
-#include "Helper.h"
+#include "Core/Subdivision.h"
+#include "Objects/DesignerObject.h"
+#include "DesignerEditor.h"
+
+#include <Material/Material.h>
+#include <Objects/IObjectLayer.h>
 
 namespace Designer
 {
@@ -183,6 +183,7 @@ bool ModelCompiler::UpdateMesh(CBaseObject* pBaseObject, Model* pModel, ShelfID 
 	{
 		RemoveStatObj(nShelf);
 		DeleteRenderNode(nShelf);
+		pBaseObject->GetLayer()->SetModified(true);
 		return true;
 	}
 
@@ -190,7 +191,6 @@ bool ModelCompiler::UpdateMesh(CBaseObject* pBaseObject, Model* pModel, ShelfID 
 
 	IMaterial* pMaterial = GetMaterialFromBaseObj(pBaseObject);
 
-	int prevSubObjCount = m_pStatObj[nShelf]->GetSubObjectCount();
 	bool bCreateBackFaces = pModel->GetFlag() & eModelFlag_DisplayBackFace;
 
 	m_pStatObj[nShelf]->m_eStreamingStatus = ecss_Ready;
@@ -205,6 +205,7 @@ bool ModelCompiler::UpdateMesh(CBaseObject* pBaseObject, Model* pModel, ShelfID 
 
 	InvalidateStatObj(m_pStatObj[nShelf], CheckFlags(eCompiler_Physicalize));
 	m_pStatObj[nShelf]->m_eStreamingStatus = ecss_Ready;
+	pBaseObject->GetLayer()->SetModified(true);
 
 	return true;
 }
@@ -262,6 +263,22 @@ int ModelCompiler::GetStaticObjFlags()
 	return m_pStatObj[0]->GetFlags();
 }
 
+void ModelCompiler::SetSelected(bool bSelect)
+{
+	for (int shelfID = 0; shelfID < cShelfMax; ++shelfID)
+	{
+		if (m_pRenderNode[shelfID])
+		{
+			if (bSelect)
+				m_RenderFlags |= ERF_SELECTED;
+			else
+				m_RenderFlags &= ~ERF_SELECTED;
+
+			m_pRenderNode[shelfID]->SetRndFlags(ERF_SELECTED, bSelect);
+		}
+	}
+}
+
 void ModelCompiler::DeleteAllRenderNodes()
 {
 	for (int shelfID = 0; shelfID < cShelfMax; ++shelfID)
@@ -312,7 +329,7 @@ void ModelCompiler::UpdateRenderNode(CBaseObject* pBaseObject, ShelfID nShelf)
 		}
 	}
 
-	int renderFlags = m_RenderFlags;
+	uint64 renderFlags = m_RenderFlags;
 
 	m_pRenderNode[nShelf]->SetRndFlags(renderFlags);
 	m_pRenderNode[nShelf]->SetViewDistRatio(m_viewDistRatio);
@@ -398,9 +415,6 @@ void ModelCompiler::SaveMesh(CArchive& ar, CBaseObject* pObj, Model* pModel)
 			faces = pMesh->GetMesh()->GetStreamPtr<SMeshFace>(CMesh::FACES);
 			nFaceCount = pMesh->GetFaceCount();
 		}
-
-		int nIndexCount = pMesh->GetIndexCount();
-		vtx_idx* const indices = pMesh->GetMesh()->GetStreamPtr<vtx_idx>(CMesh::INDICES);
 
 		int nSubsetCount = pMesh->GetSubSetCount();
 
@@ -711,4 +725,3 @@ bool ModelCompiler::IsValid() const
 	return m_pStatObj[0] || m_pStatObj[1];
 }
 };
-

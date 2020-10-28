@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include <StdAfx.h>
 #include "NotificationCenter.h"
@@ -33,6 +33,5 @@ CProgressNotification::~CProgressNotification()
 {
 	CNotificationCenter* pNotificationCenter = static_cast<CNotificationCenter*>(GetIEditor()->GetNotificationCenter());
 	Internal::CProgressNotification* pProgress = static_cast<Internal::CProgressNotification*>(pNotificationCenter->GetNotification(m_id));
-	pProgress->TaskComplete();
+	pProgress->SetProgress(1.0f);
 }
-

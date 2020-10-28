@@ -1,4 +1,4 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
 #include "StdAfx.h"
 
@@ -102,7 +102,7 @@ int CWalkingRigidEntity::SetParams(pe_params *_params, int bThreadSafe)
 		if (!m_nLegs)
 			m_legs = new Vec3[3];
 		m_nLegs = 1;
-		m_legs[1] = -(m_legs[0] = Vec3(0,0,gp.pos.z-caps.hh-caps.r));
+		m_legs[1] = -(m_legs[0] = Vec3(0,0,gp.pos.z));
 		m_legs[2] = -ortz;
 		return 1;
 	}
@@ -216,6 +216,20 @@ int CWalkingRigidEntity::GetStatus(pe_status* _status) const
 	return CRigidEntity::GetStatus(_status);
 }
 
+int CWalkingRigidEntity::Action(pe_action* _action,int bThreadSafe)
+{
+	ChangeRequest<pe_action> req(this,m_pWorld,_action,bThreadSafe);
+	if (req.IsQueued())
+		return 1;
+
+	if (_action->type==pe_action_reset::type_id) {
+		if (m_pentGround) {
+			RemoveCollider(m_pentGround); m_pentGround=nullptr;
+		}
+	}
+	return CRigidEntity::Action(_action);
+}
+
 int CWalkingRigidEntity::Step(float dt) 
 { 
 	m_nCollEnts=-1; m_moveDist=0; m_Eaux=0; 
@@ -279,6 +293,7 @@ void CWalkingRigidEntity::CheckAdditionalGeometry(float dt)
 	gwd[1].R = Matrix33(m_qNew);
 	gwd[1].offset = m_posNew;
 	m_Eaux = 0;
+	m_body.v-=m_lastVelCorr; m_lastVelCorr.zero();
 
 	for(int ileg=0; ileg<m_nLegs; ileg++) {
 		aray.m_ray.origin = m_legs[ileg*3];
@@ -303,13 +318,27 @@ void CWalkingRigidEntity::CheckAdditionalGeometry(float dt)
 	if (pentGround!=m_pentGround) {
 		if (m_pentGround && !HasContactsWith(m_pentGround) && !m_pentGround->HasContactsWith(this))
 			RemoveCollider(m_pentGround);
-		if (pentGround && pentGround->GetMassInv()>0)
+		if (pentGround)
 			AddCollider(pentGround);
 	}
 	{ WriteLock lock(m_lockUpdate);
 		m_pentGround = pentGround;
 		m_distHit=thit; m_ilegHit=ilegHit; m_ipartGround=ipartGround;
 		m_ptlocGround=ptlocGround; m_nlocGround=nlocGround;	m_matidGround=matidGround;
+	}
+}
+
+void CWalkingRigidEntity::ComputeBBox(Vec3 *BBox, int flags)
+{
+	CRigidEntity::ComputeBBox(BBox,flags);
+	if (m_pentGround) {
+		QuatTS qts; m_pentGround->GetPartTransform(m_ipartGround, qts.t,qts.q,qts.s, this);
+		Vec3 ptLeg = qts*m_ptlocGround;
+		float pad = m_pWorld->m_vars.maxContactGap;
+		for(int i=0;i<3;i++) {
+			BBox[0][i] = min(m_BBoxNew[0][i],ptLeg[i]-pad);
+			BBox[1][i] = max(m_BBoxNew[1][i],ptLeg[i]+pad);
+		}
 	}
 }
 
@@ -331,8 +360,8 @@ int CWalkingRigidEntity::RegisterContacts(float dt, int nMaxPlaneContacts)
 		}	else {
 			float diff = m_legs[m_ilegHit*3+1]*m_legs[m_ilegHit*3+2]-m_distHit;
 			Vec3 leg = m_qNew*-m_legs[m_ilegHit*3+2];
-			m_body.v -= (m_nColliders ? m_gravity : m_gravityFreefall)*dt;
-			m_body.v += leg*(diff*m_unprojScale-m_body.v*leg);
+			m_body.v -= (m_nColliders ? m_gravity : m_gravityFreefall)*dt; // remove gravity applied during RigidBody step
+			m_body.v += (m_lastVelCorr = leg*(diff*m_unprojScale)); // this correction will be used only once, during the next step
 			m_body.P = m_body.v*m_body.M;
 		}
 	return CRigidEntity::RegisterContacts(dt, nMaxPlaneContacts);	

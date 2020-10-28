@@ -1,7 +1,6 @@
-// Copyright 2001-2018 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
 
-#ifndef _TEXTURECOMPILER_H
-#define _TEXTURECOMPILER_H
+#pragma once
 
 #include <stdio.h>     // strlen()
 #include <functional>
@@ -10,6 +9,8 @@
 #include <deque>
 
 #include <CryCore/ToolsHelpers/ResourceCompilerHelper.h>
+
+struct IAsyncTextureCompileListener;
 
 //////////////////////////////////////////////////////////////////////////
 // Provides settings and functions to make calls to RC to compile textures.
@@ -112,6 +113,7 @@ public:
 	//   szDstFile usually the path to a DDS
 	bool          HasQueuedResourceCompiler(const char* szSrcFile, const char* szDstFile);
 	ERcCallResult QueueResourceCompiler(const char* szSrcFile, const char* szDstFile, const bool bWindow, const bool bRefresh);
+
 #endif // CRY_ENABLE_RC_HELPER
 
 	void AddAsyncTextureCompileListener(IAsyncTextureCompileListener* pListener);
@@ -119,6 +121,14 @@ public:
 
 private:
 #if defined(CRY_ENABLE_RC_HELPER)
+	bool AddToWatchList(const char* szDstFile, const char* szSrcFile);
+	void NotifyCompilationQueueTriggered(int pending);
+	void NotifyCompilationStarted(TProcItem* item, int pending);
+	void NotifyCompilationFinished(const char* szSourceFile, const char* szDestFile, ERcExitCode eReturnCode);
+	void NotifyCompilationFinished(TProcItem* item);
+	void NotifyCompilationQueueDepleted();
+	void GetNextItem(TProcItem* &item, int &pending);
+
 	// Arguments:
 	//   szFilePath - could be source or destination filename
 	//   dwIndex - used to iterate through all input filenames, start with 0 and increment by 1
@@ -129,7 +139,6 @@ private:
 	  const unsigned int index,
 	  char* inputFilename,
 	  size_t inputFilenameSizeInBytes);
-#endif
 
 	// little helper function (to stay independent)
 	static string AddSuffix(string in, const char* suffix)
@@ -144,6 +153,8 @@ private:
 	}
 
 	static bool IsFileOpened(const char* szPath);
+#endif
+
 public:
 	// only for image formats supported by the resource compiler
 	// Arguments:
@@ -164,4 +175,3 @@ public:
 	}
 };
 
-#endif
